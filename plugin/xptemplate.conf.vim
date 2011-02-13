@@ -8,23 +8,21 @@ let s:oldcpo = &cpo
 set cpo-=< cpo+=B
 
 
-runtime plugin/debug.vim
-
-let s:escapeHead   = '\v(\\*)\V'
-let s:unescapeHead = '\v(\\*)\1\\?\V'
-let s:ep           = '\%(' . '\%(\[^\\]\|\^\)' . '\%(\\\\\)\*' . '\)' . '\@<='
+exe XPT#importConst
 
 
+let g:xptemplate_always_compile = 1
 
-let s:def = function( "XPT#setIfNotExist" )
 
+let s:def = function( "XPT#default" )
 
-" call s:def('g:xptemplate_show_stack'	, 1 )
+" TODO doc it
+call s:def('g:xptemplate_always_compile'	, 1 )
+call s:def('g:xptemplate_show_stack'	, 1 )
 " call s:def('g:xptemplate_abbr_mode'	, 0 )
 " call s:def('g:xptemplate_crash'	, '<C-g>' )
 " call s:def('g:xptemplate_nav_clear_next'	, '<cr>' )
 " call s:def('g:xptemplate_map'	, '' )
-
 call s:def('g:xptemplate_key'	, '<C-\>' )
 call s:def('g:xptemplate_key_force_pum'	, '<C-r>' . g:xptemplate_key )
 call s:def('g:xptemplate_key_pum_only'	, '<C-r><C-r>' . g:xptemplate_key )
@@ -124,6 +122,8 @@ for s:path in g:xptemplate_snippet_folders
     let &runtimepath .= ',' . s:path
 endfor
 
+let g:XPT_PATH = s:path
+
 unlet s:path
 unlet s:filename
 
@@ -202,7 +202,7 @@ endif
 
 
 " parse personal variable
-let s:pvs = split(g:xptemplate_vars, '\V'.s:ep.'&')
+let s:pvs = split(g:xptemplate_vars, '\V'.s:nonEscaped.'&')
 
 for s:v in s:pvs
   let s:key = matchstr(s:v, '\V\^\[^=]\*\ze=')
@@ -246,7 +246,7 @@ fun! g:XPTaddBundle(ft, bundle) "{{{
     let g:xptBundle[ a:ft ][ a:bundle ] = 1
 
     " TODO NOTE: problem: last snipFileScop is used in XPTembed. any side effect?
-    call XPTembed( a:ft . '/' . a:bundle )
+    call xpt#parser#Embed( a:ft . '/' . a:bundle )
 endfunction "}}}
 
 fun! g:XPTloadBundle(ft, bundle) "{{{
@@ -261,12 +261,15 @@ endfunction "}}}
 
 
 
+
 fun! XPTfiletypeInit() "{{{
 
     " Ftplugin may be loaded before 'BufEnter' event
     if !exists( 'b:xptemplateData' )
         call XPTemplateInit()
     endif
+
+    call xpt#parser#LoadSnippets()
 
     let x = b:xptemplateData
 
@@ -302,7 +305,7 @@ augroup XPTftInit
 augroup END
 
 
-" <C-v><C-v><BS> force pum to close
+" <C-v><C-v><BS> forces pum to close
 
 if stridx( g:xptemplate_brace_complete, '(' ) >= 0
     inoremap <silent> ( <C-v><C-v><BS><C-r>=XPTtgr('(',{'noliteral':1,'k':'('})<cr>
@@ -371,30 +374,6 @@ endfunction "}}}
 
 
 
-" TODO noneed to check and fix settings. they have been done in SettingSwitch
-
-" check critical setting:
-"
-" backspace >2 or with start
-" nocompatible
-
-let bs=&bs
-
-if bs != 2 && bs !~ "start"
-    if g:xptemplate_fix
-        set bs=2
-    else
-        echom "'backspace' option must be set with 'start'. set bs=2 or let g:xptemplate_fix=1 to fix it"
-    endif
-endif
-
-if &compatible == 1
-    if g:xptemplate_fix
-        set nocompatible
-    else
-        echom "'compatible' option must be set. set compatible or let g:xptemplate_fix=1 to fix it"
-    endif
-endif
 
 let &cpo = s:oldcpo
 
